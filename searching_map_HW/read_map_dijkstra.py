@@ -6,36 +6,32 @@ import math
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import time
 
 
 '''
 ---------------Personal Notes---------------------
 How to run)
 1. cd /workspaces/MEM571/searching_map_HW/maps/
-2. python3 /workspaces/MEM571/searching_map_HW/read_map.py trivial.gif
+2. python3 /workspaces/MEM571/searching_map_HW/read_map_dijkstra.py trivial.gif
 -------------------------------------------------------
 '''
 
-'''
-These variables are determined at runtime and should not be changed or mutated by you
-'''
+'''These variables are determined at runtime and should not be changed or mutated by you'''
 start = (0, 0)  # a single (x,y) tuple, representing the start position of the search algorithm
 end = (0, 0)  # a single (x,y) tuple, representing the end position of the search algorithm
 difficulty = ""  # a string reference to the original import file
 G = 0
 E = 0
 e_list = []
-'''
-These variables determine display coler, and can be changed by you, I guess
-'''
+
+'''These variables determine display coler, and can be changed by you, I guess'''
 NEON_GREEN = (0, 255, 0)
 PURPLE = (85, 26, 139)
 LIGHT_GRAY = (50, 50, 50)
 DARK_GRAY = (100, 100, 100)
 
-'''
-These variables are determined and filled algorithmically, and are expected (and required) be mutated by you
-'''
+'''These variables are determined and filled algorithmically, and are expected (and required) be mutated by you'''
 path = []  # an ordered list of (x,y) tuples, representing the path to traverse from start-->goal
 expanded = {}  # a dictionary of (x,y) tuples, representing nodes that have been expanded
 frontier = {}  # a dictionary of (x,y) tuples, representing nodes to expand to in the future
@@ -44,12 +40,12 @@ open = queue.PriorityQueue()
 came_from = {}
 cost_so_far = {}
 
+"""
+This function is meant to use the global variables [start, end, path, expanded, frontier] to search through the
+provided map.
+:param map: A '1-concept' PIL PixelAccess object to be searched. (basically a 2d boolean array)"""
 def search(map):
-    """
-    This function is meant to use the global variables [start, end, path, expanded, frontier] to search through the
-    provided map.
-    :param map: A '1-concept' PIL PixelAccess object to be searched. (basically a 2d boolean array)
-    """
+    global path
     # Get image dimensions
     im_dims = Image.open(difficulty)
     width, height = im_dims.size
@@ -58,6 +54,9 @@ def search(map):
     # Confirmation of start and end
     print("Starting at : {}".format(start))
     print("Goal : {}".format(end))
+
+    # Start timer for comparison
+    t0 = time.time()
 
     # Main Dijkstra loop
     while not open.empty():
@@ -77,14 +76,14 @@ def search(map):
         
         # Check if goal has been reached
         if current_node == end:
-            node = end
-            while node is not None:
-                path.append(node)
-                node = came_from.get(node)
-            path.reverse()
             print("The maze has been solved!")
             print("Path Cost: {}".format(current_cost))
+            result = backtrace_path(came_from, current_node)
+            path.extend(result)
             print("Length of path: {}".format(len(path)))
+            print("Nodes Visited: {}".format(len(expanded)))
+            time_passed = time.time() - t0
+            print("Time Passed: {}".format(time_passed))
             return 
         
         # Expand nearby steps
@@ -120,34 +119,43 @@ def next_steps(node, map, width, height):
                 steps.append((nx,ny))
     return steps
 
+def backtrace_path(came_from, current):
+    # initialize
+    backtrace = []
+    # loop through the path
+    while current is not None:
+        backtrace.append(current)
+        current = came_from[current]
+    # flip it so we have the path
+    backtrace.reverse()
+    return backtrace
 
+# :param save_file: (optional) filename to save image to (no filename given means no save file)
 def visualize_search(save_file="do_not_save.png"):
-    """
-    :param save_file: (optional) filename to save image to (no filename given means no save file)
-    """
     im = Image.open(difficulty).convert("RGB")
     pixel_access = im.load()
 
-    # draw start and end pixels
-    pixel_access[start[0], start[1]] = NEON_GREEN
-    pixel_access[end[0], end[1]] = NEON_GREEN
-
-    # draw path pixels
-    for pixel in path:
-        pixel_access[pixel[0], pixel[1]] = PURPLE
+    # draw expanded pixels
+    # had to rearrange - path was getting overwritten
+    for pixel in expanded.keys():
+        pixel_access[pixel[0], pixel[1]] = DARK_GRAY
 
     # draw frontier pixels
     for pixel in frontier.keys():
         pixel_access[pixel[0], pixel[1]] = LIGHT_GRAY
 
-    # draw expanded pixels
-    for pixel in expanded.keys():
-        pixel_access[pixel[0], pixel[1]] = DARK_GRAY
+    # draw path pixels
+    for pixel in path:
+        pixel_access[pixel[0], pixel[1]] = PURPLE
+    
+    # draw start and end pixels
+    pixel_access[start[0], start[1]] = NEON_GREEN
+    pixel_access[end[0], end[1]] = NEON_GREEN
 
     # display and (maybe) save results
-    # im.show()
-    # if (save_file != "do_not_save.png"):
-    #     im.save(save_file)
+    im.show()
+    if (save_file != "do_not_save.png"):
+         im.save(save_file)
     im.save("solved_maze.png")
     im.close()
 
@@ -192,4 +200,4 @@ if __name__ == "__main__":
     im = Image.open(difficulty)
     im = im.convert('1')
     search(im.load())
-    visualize_search("solved_maze.png")
+    visualize_search("solved_maze_dijkstra.png")
